@@ -133,11 +133,16 @@ def do_events(_api, manager):
     :param _api: utils.utils.API
     :return: Nothing, yet.
     """
-    print('Running events loop.')
+    # print('Running events loop.')
     manager.collect_events()
     while manager.has_event():
         event = manager.get_event()
         event.run()
+
+
+def _safe_exit(config, code=0):
+    config.socket.close()
+    sys.exit(code)
 
 
 def main():
@@ -153,30 +158,33 @@ def main():
     print('Starting bot. Information:\n\tSocket:', str(_api.socket), '\n\tChannel:', _api.channel)
     while True:
         do_events(_api, _manager)
-        response = _api.resp()
-        if response is not None:
-            print('Got response:\n\t', response)
+        full_response = _api.resp()
+        while full_response is not None and len(full_response) > 0:
+            # print('Got response:\n\t',
+            response = full_response.pop(0)
+            print(response)
             command = re.search(r'^:(\w*)!\1@\1\.tmi\.twitch\.tv PRIVMSG #\w* : *~(.+)$', response)
             if command is not None:
                 _command = command.group(2).strip('\r\n ')
                 _caller = command.group(1)
                 _args = _command.split(' ', 1)
                 _command = _command.split(' ')[0].lower()
-                print('_cmd:\t', _command)
-                print('_caller:\t', _caller)
+                #print('_cmd:\t', _command)
+                #print('_caller:\t', _caller)
                 if len(_args) <= 1:
                     _args = None
                 else:
                     _args = _args[1]
-                print('_args:\t', _args)
+                #print('_args:\t', _args)
                 if _caller in ['dfolder']:
                     # This should be improved later, but we're going to just check the command here
                     if _command == 'stop':
                         _manager.add_event_t(SendMessageEvent, message="Why don't you love me...",
-                                             after_run=functools.partial(sys.exit, 0))
+                                             after_run=functools.partial(_safe_exit, _config, 0))
                     elif _command == 'debug':
                         print("Attempting to print debug messages:")
                         print(_manager.dump_debug())
+                        # _manager.add_event_t(GetNoticesEvent)
                     elif _command == 'say' and _args is not None:
                         _manager.add_event_t(SendMessageEvent, message=_args)
                 else:
