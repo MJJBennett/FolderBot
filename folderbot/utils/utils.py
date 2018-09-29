@@ -7,7 +7,9 @@ import select
 
 
 def send(socket, channel, message):
-    socket.send("PRIVMSG #{} :{}".format(channel, message).encode("utf-8"))
+    full_message = "PRIVMSG #{} :{}\r\n".format(channel, message).encode("utf-8")
+    print("Sending as follows:\n\t", full_message)
+    socket.send(full_message)
 
 
 def get_resp_or_none(socket):

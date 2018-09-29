@@ -1,8 +1,7 @@
-from .config import bot_configuration as cf
-from .config import config as config_class
-from .utils import utils as ut
-from .utils import socketutils
-from . import bot
+from config import bot_configuration as cf
+from config import config as config_class
+from utils import utils as ut
+from utils import socketutils
 import time
 import functools
 import re
@@ -29,14 +28,16 @@ class EveryLoopEvent(Event):
         self.extra_event = extra_event
 
     def run(self):
+        print('Every loop event with runs', self.runs)
         self.total_runs += 1
         self.runs += 1
         if self.event is not None:
             self.event(self.api)
-        self.manager.add_event(self)
+        self.manager.add_event_next(self)
 
         if self.runs >= self.runs_till_event and self.extra_event is not None:
-            self.extra_event(self.api, self.manager)
+            print('Running special event!')
+            self.extra_event()
             self.runs = 0
 
 
@@ -45,8 +46,10 @@ class EventManager:
         self.time_start = time.time()
         self.event_list = []
         self.do_later = []
+        self.do_next = []
         self.do_print = True
         self.stats = {}
+        self.MAX_EVENTS_PER_RUN = 10
 
     def add_event(self, event, delay=None):
         if delay is not None:
@@ -58,7 +61,10 @@ class EventManager:
         self.do_later.append([delay, event])
         self.do_later.sort(key=self._get_delay)
 
-    def has_event(self):
+    def add_event_next(self, event):
+        self.do_next.append(event)
+
+    def collect_events(self):
         # First, check to see if there are any delayed events we should add to the pile
         now = time.time()
         for delayed_event in self.do_later:
@@ -68,6 +74,11 @@ class EventManager:
             else:
                 # We keep the list sorted, so if we find an event that is later than now, we're out of events to send
                 break
+        # Now, add all of the 'next events' to the current events
+        self.event_list.extend(self.do_next)
+        self.do_next.clear()
+
+    def has_event(self):
         return len(self.event_list) != 0
 
     def dump_debug(self):
@@ -98,9 +109,12 @@ def get_config():
 def do_events(_api, manager):
     """
     Pretty simple event handling.
+    :param manager: EventManager for consistent context
     :param _api: utils.utils.API
     :return: Nothing, yet.
     """
+    print('Running events loop.')
+    manager.collect_events()
     while manager.has_event():
         event = manager.get_event()
         event.run()
@@ -113,14 +127,20 @@ def main():
     # API takes an object with socket and channel members
     _api = ut.API(_config)
     _manager = EventManager()
-    _manager.add_event(EveryLoopEvent(_callable=None, _api=_api, _manager=_manager, runs_till_event=10,
-                                      extra_event=functools.partial(_api.send, _api, "There have been 10 loops!")))
+    _manager.add_event(EveryLoopEvent(_callable=None, _api=_api, _manager=_manager, runs_till_event=3,
+                                      extra_event=functools.partial(_api.send, "There have been 10 loops!")))
 
+    print('Starting bot. Information:\n\tSocket:', str(_api.socket), '\n\tChannel:', _api.channel)
     while True:
+        do_events(_api, _manager)
         response = _api.resp()
         if response is not None:
             print(response)
             command = re.search(r'^:(\w*)!\1@\1\.tmi\.twitch\.tv PRIVMSG #\w* : *~(.*)$', response)
+            if command is not None:
+                _cmd = command.group(2)
+                print('Received a command! Command was: ' + _cmd)
+                _api.send("Thank you for your command: " + _cmd)
 
         # This is to avoid making Twitch angry
         sleep(0.75)
