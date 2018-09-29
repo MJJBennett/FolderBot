@@ -14,12 +14,9 @@ def send(socket, channel, message):
     socket.send(full_message)
 
 
-def get_resp_or_none(socket):
-    print("Going to find information from sockets.")
-    read_s, write_s, error_s = select.select([socket], [], [], 2)
-    print("Found socket information.")
+def get_resp_or_none(socket, timeout=1.0):
+    read_s, write_s, error_s = select.select([socket], [], [], timeout)
     for _s in read_s:
-        print("There is a socket ready to read.")
         response = _s.recv(1024).decode("utf-8")
         if response == "PING :tmi.twitch.tv\r\n":  # this is very temporary
             _s.send("PONG :tmi.twitch.tv\r\n".encode("utf-8"))
@@ -46,7 +43,10 @@ class API:
         if self.requests_in_last_thirty_seconds > 20:
             print('Skipping a request... fix your event loop!\n\tRequest: ' + message)
         else:
+            response = get_resp_or_none(self.socket, 0.1)
             send(self.socket, self.channel, message)
+            if response is not None:
+                print("Warning: Discarding response", response)
 
     def resp(self):
         response = get_resp_or_none(self.socket)

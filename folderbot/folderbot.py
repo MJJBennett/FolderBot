@@ -172,13 +172,13 @@ def main():
                 if _caller in ['dfolder']:
                     # This should be improved later, but we're going to just check the command here
                     if _command == 'stop':
-                        _manager.add_event_t(SendMessageEvent, "Why don't you love me...",
+                        _manager.add_event_t(SendMessageEvent, message="Why don't you love me...",
                                              after_run=functools.partial(sys.exit, 0))
                     elif _command == 'debug':
                         print("Attempting to print debug messages:")
                         print(_manager.dump_debug())
                     elif _command == 'say' and _args is not None:
-                        _manager.add_event(SendMessageEvent(None, _api, _manager, _args))
+                        _manager.add_event_t(SendMessageEvent, message=_args)
                 else:
                     _api.send("Please stop trying to abuse me, " + _caller + ".")
 
