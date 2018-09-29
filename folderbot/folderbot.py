@@ -21,6 +21,34 @@ class Event:
         self.event(self.api)
 
 
+class SendExactEvent(Event):
+    def __init__(self, _callable, _api, _manager, message, after_run=None):
+        super().__init__(_callable, _api, _manager, after_run)
+        self.message = message
+
+    def run(self):
+        if self.event is None:
+            self.api.send_no_fmt(self.message)
+        else:
+            self.api.send_no_fmt(self.event(self.message))
+        if self.after_run is not None:
+            self.after_run()
+
+
+class SendCapReqEvent(Event):
+    def __init__(self, _callable, _api, _manager, message, after_run=None):
+        super().__init__(_callable, _api, _manager, after_run)
+        self.message = message
+
+    def run(self):
+        if self.event is None:
+            self.api.send_cap_req(self.message)
+        else:
+            self.api.send_cap_req(self.event(self.message))
+        if self.after_run is not None:
+            self.after_run()
+
+
 class SendMessageEvent(Event):
     def __init__(self, _callable, _api, _manager, message, after_run=None):
         super().__init__(_callable, _api, _manager, after_run)
@@ -163,7 +191,10 @@ def main():
             # print('Got response:\n\t',
             response = full_response.pop(0)
             print(response)
-            command = re.search(r'^:(\w*)!\1@\1\.tmi\.twitch\.tv PRIVMSG #\w* : *~(.+)$', response)
+            if not _api.full_mode:
+                command = re.search(r'^:(\w*)!\1@\1\.tmi\.twitch\.tv PRIVMSG #\w* : *~(.+)$', response)
+            else:
+                command = re.search(r':(\w*)!\1@\1\.tmi\.twitch\.tv PRIVMSG #\w* : *~(.+)$', response)
             if command is not None:
                 _command = command.group(2).strip('\r\n ')
                 _caller = command.group(1)
@@ -187,6 +218,12 @@ def main():
                         # _manager.add_event_t(GetNoticesEvent)
                     elif _command == 'say' and _args is not None:
                         _manager.add_event_t(SendMessageEvent, message=_args)
+                    elif _command == 'cap_req' and _args is not None:
+                        _manager.add_event_t(SendCapReqEvent, message=_args)
+                    elif _command == 'send_exact' or _command == 'say_exact' and _args is not None:
+                        _manager.add_event_t(SendExactEvent, message=_args)
+                    elif _command == 'enable_full':
+                        _manager.add_event(Event(_callable=ut.enable_full, _api=_api, _manager=_manager))
                 else:
                     _api.send("Please stop trying to abuse me, " + _caller + ".")
 

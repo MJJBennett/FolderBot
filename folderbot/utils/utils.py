@@ -16,6 +16,20 @@ def send(socket, channel, message):
     socket.send(full_message)
 
 
+def send_no_fmt(socket, message):
+    message = message.strip('\n\r')
+    full_message = "{}".format(message).encode("utf-8")
+    print("Sending as follows:\n\t", full_message)
+    socket.send(full_message)
+
+
+def send_cap_req(socket, message):
+    message = message.strip('\n\r')
+    full_message = "CAP REQ :{}\r\n".format(message).encode("utf-8")
+    print("Sending as follows:\n\t", full_message)
+    socket.send(full_message)
+
+
 def get_resp_or_none(socket, timeout=1.0, return_s=None):
     read_s, write_s, error_s = select.select([socket], [], [], timeout)
     if return_s is None:
@@ -29,11 +43,21 @@ def get_resp_or_none(socket, timeout=1.0, return_s=None):
         else:
             return_s.append(response)
         found_this_loop = True
+    for _s in write_s:
+        response = _s.recv(1024).decode("utf-8")
+        print(response)
+    for _s in error_s:
+        response = _s.recv(1024).decode("utf-8")
+        print(response)
     if found_this_loop:
         return get_resp_or_none(socket, timeout, return_s)
     if len(return_s) == 0:
         return None
     return return_s
+
+
+def enable_full(api):
+    api.enable_full_mode()
 
 
 class API:
@@ -43,14 +67,46 @@ class API:
         self.pings = 0
         self.requests_in_last_thirty_seconds = 0
         self.timeout = time.time()
+        self.full_mode = False
 
-    def send(self, message):
+    def request_request(self):
+        # This checks if you can make a request (or if you need to wait)
         if self.timeout + 30 < time.time():
             # We can reset!
             self.requests_in_last_thirty_seconds = 0
             self.timeout = time.time()
         self.requests_in_last_thirty_seconds += 1
         if self.requests_in_last_thirty_seconds > 20:
+            return False
+        return True  # You are allowed to make a request
+
+    def enable_full_mode(self):
+        self.send_cap_req("twitch.tv/commands")
+        self.send_cap_req("twitch.tv/tags")
+        self.send_cap_req("twitch.tv/membership")
+        self.full_mode = True
+
+    def send_cap_req(self, message):
+        # Hopefully we'll just make this a single 'send' function in the future with helpers...
+        if not self.request_request():
+            print('Skipping a request... fix your event loop!\n\tRequest: ' + message)
+        else:
+            response = get_resp_or_none(self.socket, 0.1)
+            send_cap_req(self.socket, message)
+            if response is not None:
+                print("Warning: Discarding response", response)
+
+    def send_no_fmt(self, message):
+        if not self.request_request():
+            print('Skipping a request... fix your event loop!\n\tRequest: ' + message)
+        else:
+            response = get_resp_or_none(self.socket, 0.1)
+            send_no_fmt(self.socket, message)
+            if response is not None:
+                print("Warning: Discarding response", response)
+
+    def send(self, message):
+        if not self.request_request():
             print('Skipping a request... fix your event loop!\n\tRequest: ' + message)
         else:
             response = get_resp_or_none(self.socket, 0.1)
