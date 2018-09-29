@@ -1,3 +1,3 @@
 class Bot:
-    def __init__(self, API):
-        self.API = API
+    def __init__(self, api):
+        self.API = api

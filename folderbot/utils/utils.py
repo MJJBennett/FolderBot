@@ -5,6 +5,7 @@
 
 import select
 
+
 def send(socket, channel, message):
     socket.send("PRIVMSG #{} :{}".format(channel, message).encode("utf-8"))
 
@@ -16,7 +17,7 @@ def get_resp_or_none(socket):
     for _s in read_s:
         print("There is a socket ready to read.")
         response = _s.recv(1024).decode("utf-8")
-        if response == "PING :tmi.twitch.tv\r\n": # this is very temporary
+        if response == "PING :tmi.twitch.tv\r\n":  # this is very temporary
             _s.send("PONG :tmi.twitch.tv\r\n".encode("utf-8"))
             return "PING"
         else:
