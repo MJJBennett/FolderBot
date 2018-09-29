@@ -58,7 +58,8 @@ class EveryLoopEvent(Event):
 
 
 class EventManager:
-    def __init__(self):
+    def __init__(self, api):
+        self.api = api
         self.time_start = time.time()
         self.event_list = []
         self.do_later = []
@@ -66,6 +67,9 @@ class EventManager:
         self.do_print = True
         self.stats = {}
         self.MAX_EVENTS_PER_RUN = 10
+
+    def add_event_t(self, event_t, *args, **kwargs):
+        self.add_event(event_t(_callable=None, _api=self.api, _manager=self, *args, **kwargs))
 
     def add_event(self, event, delay=None):
         if delay is not None:
@@ -142,7 +146,7 @@ def main():
 
     # API takes an object with socket and channel members
     _api = ut.API(_config)
-    _manager = EventManager()
+    _manager = EventManager(_api)
     # _manager.add_event(EveryLoopEvent(_callable=None, _api=_api, _manager=_manager, runs_till_event=30,
     #                                   extra_event=functools.partial(_api.send, "There have been 10 loops!")))
 
@@ -168,8 +172,8 @@ def main():
                 if _caller in ['dfolder']:
                     # This should be improved later, but we're going to just check the command here
                     if _command == 'stop':
-                        _manager.add_event(SendMessageEvent(None, _api, _manager, "Why don't you love me...",
-                                                            after_run=functools.partial(sys.exit, 0)))
+                        _manager.add_event_t(SendMessageEvent, "Why don't you love me...",
+                                             after_run=functools.partial(sys.exit, 0))
                     elif _command == 'debug':
                         print("Attempting to print debug messages:")
                         print(_manager.dump_debug())
