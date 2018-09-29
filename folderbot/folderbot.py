@@ -5,23 +5,39 @@ from utils import socketutils
 import time
 import functools
 import re
+import sys
 
 from time import sleep
 
 
 class Event:
-    def __init__(self, _callable, _api, _manager):
+    def __init__(self, _callable, _api, _manager, after_run=None):
         self.event = _callable
         self.api = _api
         self.manager = _manager
+        self.after_run = after_run
 
     def run(self):
         self.event(self.api)
 
 
+class SendMessageEvent(Event):
+    def __init__(self, _callable, _api, _manager, message, after_run=None):
+        super().__init__(_callable, _api, _manager, after_run)
+        self.message = message
+
+    def run(self):
+        if self.event is None:
+            self.api.send(self.message)
+        else:
+            self.api.send(self.event(self.message))
+        if self.after_run is not None:
+            self.after_run()
+
+
 class EveryLoopEvent(Event):
-    def __init__(self, _callable, _api, _manager, runs_till_event=0, extra_event=None):
-        super().__init__(_callable, _api, _manager)
+    def __init__(self, _callable, _api, _manager, runs_till_event=0, extra_event=None, after_run=None):
+        super().__init__(_callable, _api, _manager, after_run)
         self.runs = 0
         self.total_runs = 0
         self.runs_till_event = runs_till_event
@@ -127,20 +143,40 @@ def main():
     # API takes an object with socket and channel members
     _api = ut.API(_config)
     _manager = EventManager()
-    _manager.add_event(EveryLoopEvent(_callable=None, _api=_api, _manager=_manager, runs_till_event=3,
-                                      extra_event=functools.partial(_api.send, "There have been 10 loops!")))
+    # _manager.add_event(EveryLoopEvent(_callable=None, _api=_api, _manager=_manager, runs_till_event=30,
+    #                                   extra_event=functools.partial(_api.send, "There have been 10 loops!")))
 
     print('Starting bot. Information:\n\tSocket:', str(_api.socket), '\n\tChannel:', _api.channel)
     while True:
         do_events(_api, _manager)
         response = _api.resp()
         if response is not None:
-            print(response)
-            command = re.search(r'^:(\w*)!\1@\1\.tmi\.twitch\.tv PRIVMSG #\w* : *~(.*)$', response)
+            print('Got response:\n\t', response)
+            command = re.search(r'^:(\w*)!\1@\1\.tmi\.twitch\.tv PRIVMSG #\w* : *~(.+)$', response)
             if command is not None:
-                _cmd = command.group(2)
-                print('Received a command! Command was: ' + _cmd)
-                _api.send("Thank you for your command: " + _cmd)
+                _command = command.group(2).strip('\r\n ')
+                _caller = command.group(1)
+                _args = _command.split(' ', 1)
+                _command = _command.split(' ')[0].lower()
+                print('_cmd:\t', _command)
+                print('_caller:\t', _caller)
+                if len(_args) <= 1:
+                    _args = None
+                else:
+                    _args = _args[1]
+                print('_args:\t', _args)
+                if _caller in ['dfolder']:
+                    # This should be improved later, but we're going to just check the command here
+                    if _command == 'stop':
+                        _manager.add_event(SendMessageEvent(None, _api, _manager, "Why don't you love me...",
+                                                            after_run=functools.partial(sys.exit, 0)))
+                    elif _command == 'debug':
+                        print("Attempting to print debug messages:")
+                        print(_manager.dump_debug())
+                    elif _command == 'say' and _args is not None:
+                        _manager.add_event(SendMessageEvent(None, _api, _manager, _args))
+                else:
+                    _api.send("Please stop trying to abuse me, " + _caller + ".")
 
         # This is to avoid making Twitch angry
         sleep(0.75)
