@@ -188,13 +188,18 @@ def main():
         do_events(_api, _manager)
         full_response = _api.resp()
         while full_response is not None and len(full_response) > 0:
-            # print('Got response:\n\t',
             response = full_response.pop(0)
-            print(response)
-            if not _api.full_mode:
-                command = re.search(r'^:(\w*)!\1@\1\.tmi\.twitch\.tv PRIVMSG #\w* : *~(.+)$', response)
-            else:
-                command = re.search(r':(\w*)!\1@\1\.tmi\.twitch\.tv PRIVMSG #\w* : *~(.+)$', response)
+            # We got a response from the server!
+            # First, let's clean it up if we're in full mode.
+            # This means that the response looks really ugly & includes a bunch of unnecessary information at the start.
+            if _api.full_mode:
+                full_information = re.search(
+                    r'^@badges=[\w/0-9,]*;color=[\w/0-9,]*;display-name=(\w*);.*?user-type=[\w/0-9,]* (.*)', response)
+                if full_information is not None:
+                    print('Received a message from the user', full_information.group(1))
+                    response = full_information.group(2)
+            print(response.strip('\r\n'))
+            command = re.search(r':(\w*)!\1@\1\.tmi\.twitch\.tv PRIVMSG #\w* : *~(.+)$', response)
             if command is not None:
                 _command = command.group(2).strip('\r\n ')
                 _caller = command.group(1)
