@@ -196,22 +196,19 @@ def main():
                 full_information = re.search(
                     r'^@badges=[\w/0-9,]*;color=[\w/0-9,]*;display-name=(\w*);.*?user-type=[\w/0-9,]* (.*)', response)
                 if full_information is not None:
-                    print('Received a message from the user', full_information.group(1))
+                    print('[SENDER]', full_information.group(1))
                     response = full_information.group(2)
-            print(response.strip('\r\n'))
+            print('[RESPONSE]', response.strip('\r\n'))
             command = re.search(r':(\w*)!\1@\1\.tmi\.twitch\.tv PRIVMSG #\w* : *~(.+)$', response)
             if command is not None:
                 _command = command.group(2).strip('\r\n ')
                 _caller = command.group(1)
                 _args = _command.split(' ', 1)
                 _command = _command.split(' ')[0].lower()
-                #print('_cmd:\t', _command)
-                #print('_caller:\t', _caller)
                 if len(_args) <= 1:
                     _args = None
                 else:
                     _args = _args[1]
-                #print('_args:\t', _args)
                 if _caller in ['dfolder']:
                     # This should be improved later, but we're going to just check the command here
                     if _command == 'stop':
