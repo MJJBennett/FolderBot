@@ -9,6 +9,8 @@ from utils import socketutils
 # Events system includes
 from events import Event, EveryLoopEvent, SendExactEvent, SendCapReqEvent, SendMessageEvent
 from event_manager import EventManager
+# Logging includes
+import logging
 
 
 def do_events(_api, manager):
@@ -29,13 +31,23 @@ def main():
     # Config is a wrapper for a socket, and a channel (for now)
     _config = config.Config(socketutils.connect_to_config(cf), cf.CHANNEL)
 
+    # This is to determine whether we log information or not
+    if cf.DO_LOG:
+        print("Doing logging.")
+        logging.set_logfile_func(cf.get_log_filename)
+    if not cf.DO_STDOUT:
+        logging.set_print_function(logging.no_print)
+    else:
+        print("Doing printing.")
+    log = logging.log
+
     # API takes an object with socket and channel members
     _api = ut.API(_config)
     _manager = EventManager(_api)
     # _manager.add_event(EveryLoopEvent(_callable=None, _api=_api, _manager=_manager, runs_till_event=30,
     #                                   extra_event=functools.partial(_api.send, "There have been 10 loops!")))
 
-    print('Starting bot. Information:\n\tSocket:', str(_api.socket), '\n\tChannel:', _api.channel)
+    log('Starting bot. Information:\n\tSocket:', str(_api.socket), '\n\tChannel:', _api.channel)
     while True:
         do_events(_api, _manager)
         full_response = _api.resp()
@@ -48,9 +60,9 @@ def main():
                 full_information = re.search(
                     r'^@badges=[\w/0-9,]*;color=[\w/0-9,]*;display-name=(\w*);.*?user-type=[\w/0-9,]* (.*)', response)
                 if full_information is not None:
-                    print('[SENDER]', full_information.group(1))
+                    log('[SENDER]', full_information.group(1))
                     response = full_information.group(2)
-            print('[RESPONSE]', response.strip('\r\n'))
+            log('[RESPONSE]', response.strip('\r\n'))
             command = re.search(r':(\w*)!\1@\1\.tmi\.twitch\.tv PRIVMSG #\w* : *~(.+)$', response)
             if command is not None:
                 _command = command.group(2).strip('\r\n ')
@@ -67,8 +79,8 @@ def main():
                         _manager.add_event_t(SendMessageEvent, message="Why don't you love me...",
                                              after_run=functools.partial(ut.safe_exit, _config, 0))
                     elif _command == 'debug':
-                        print("Attempting to print debug messages:")
-                        print(_manager.dump_debug())
+                        log("Attempting to print debug messages:")
+                        log(_manager.dump_debug())
                         # _manager.add_event_t(GetNoticesEvent)
                     elif _command == 'say' and _args is not None:
                         _manager.add_event_t(SendMessageEvent, message=_args)
@@ -78,6 +90,9 @@ def main():
                         _manager.add_event_t(SendExactEvent, message=_args)
                     elif _command == 'enable_full':
                         _manager.add_event(Event(_callable=ut.enable_full, _api=_api, _manager=_manager))
+                    elif _command == 'flush_log':
+                        log("Flushing log.")
+                        logging.flush()
                 else:
                     _api.send("Please stop trying to abuse me, " + _caller + ".")
 
