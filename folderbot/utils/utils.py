@@ -7,6 +7,12 @@
 
 import select
 import time
+import sys
+
+
+def safe_exit(config, code=0):
+    config.socket.close()
+    sys.exit(code)
 
 
 def send(socket, channel, message):

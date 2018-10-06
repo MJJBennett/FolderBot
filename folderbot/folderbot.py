@@ -1,88 +1,13 @@
+# System includes
+import time, functools, re
+# Custom configuration handler includes
 from config import bot_configuration as cf
 from config import config as config_class
+# Custom utility includes
 from utils import utils as ut
 from utils import socketutils
-import time
-import functools
-import re
-import sys
-
-from time import sleep
-
-
-class Event:
-    def __init__(self, _callable, _api, _manager, after_run=None):
-        self.event = _callable
-        self.api = _api
-        self.manager = _manager
-        self.after_run = after_run
-
-    def run(self):
-        self.event(self.api)
-
-
-class SendExactEvent(Event):
-    def __init__(self, _callable, _api, _manager, message, after_run=None):
-        super().__init__(_callable, _api, _manager, after_run)
-        self.message = message
-
-    def run(self):
-        if self.event is None:
-            self.api.send_no_fmt(self.message)
-        else:
-            self.api.send_no_fmt(self.event(self.message))
-        if self.after_run is not None:
-            self.after_run()
-
-
-class SendCapReqEvent(Event):
-    def __init__(self, _callable, _api, _manager, message, after_run=None):
-        super().__init__(_callable, _api, _manager, after_run)
-        self.message = message
-
-    def run(self):
-        if self.event is None:
-            self.api.send_cap_req(self.message)
-        else:
-            self.api.send_cap_req(self.event(self.message))
-        if self.after_run is not None:
-            self.after_run()
-
-
-class SendMessageEvent(Event):
-    def __init__(self, _callable, _api, _manager, message, after_run=None):
-        super().__init__(_callable, _api, _manager, after_run)
-        self.message = message
-
-    def run(self):
-        if self.event is None:
-            self.api.send(self.message)
-        else:
-            self.api.send(self.event(self.message))
-        if self.after_run is not None:
-            self.after_run()
-
-
-class EveryLoopEvent(Event):
-    def __init__(self, _callable, _api, _manager, runs_till_event=0, extra_event=None, after_run=None):
-        super().__init__(_callable, _api, _manager, after_run)
-        self.runs = 0
-        self.total_runs = 0
-        self.runs_till_event = runs_till_event
-        self.extra_event = extra_event
-
-    def run(self):
-        print('Every loop event with runs', self.runs)
-        self.total_runs += 1
-        self.runs += 1
-        if self.event is not None:
-            self.event(self.api)
-        self.manager.add_event_next(self)
-
-        if self.runs >= self.runs_till_event and self.extra_event is not None:
-            print('Running special event!')
-            self.extra_event()
-            self.runs = 0
+# Events system includes
+from events import Event, EveryLoopEvent, SendExactEvent, SendCapReqEvent, SendMessageEvent
 
 
 class EventManager:
@@ -168,11 +93,6 @@ def do_events(_api, manager):
         event.run()
 
 
-def _safe_exit(config, code=0):
-    config.socket.close()
-    sys.exit(code)
-
-
 def main():
     # Config is a wrapper for a socket, and a channel (for now)
     _config = get_config()
@@ -213,7 +133,7 @@ def main():
                     # This should be improved later, but we're going to just check the command here
                     if _command == 'stop':
                         _manager.add_event_t(SendMessageEvent, message="Why don't you love me...",
-                                             after_run=functools.partial(_safe_exit, _config, 0))
+                                             after_run=functools.partial(ut.safe_exit, _config, 0))
                     elif _command == 'debug':
                         print("Attempting to print debug messages:")
                         print(_manager.dump_debug())
@@ -230,7 +150,7 @@ def main():
                     _api.send("Please stop trying to abuse me, " + _caller + ".")
 
         # This is to avoid making Twitch angry
-        sleep(0.75)
+        time.sleep(0.75)
 
 
 if __name__ == "__main__":
