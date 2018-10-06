@@ -1,3 +1,5 @@
+# Rename this file to bot_configuration.py & replace the nick, password, and channel.
+
 HOST = 'irc.chat.twitch.tv'
 PORT = 6667
 NICK = 'Your bot\'s nickname.'
