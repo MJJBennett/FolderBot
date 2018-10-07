@@ -11,6 +11,8 @@ class EventManager:
         self.do_print = True
         self.stats = {}
         self.MAX_EVENTS_PER_RUN = 10
+        # TODO - Events should all have a delay, and there should only be two lists for them.
+        # This will allow for an easy way to repeat delayed events.
 
     def add_event_t(self, event_t, *args, **kwargs):
         self.add_event(event_t(_callable=None, _api=self.api, _manager=self, *args, **kwargs))
@@ -52,9 +54,13 @@ class EventManager:
     def get_event(self):
         return self.event_list.pop(0)
 
-    @staticmethod  # Honestly, I don't know what this does, but Pycharm said to do it so...
+    @staticmethod
     def _get_delay(delayed_event):
         return delayed_event[0]
+
+    @staticmethod
+    def _get_delay_new(delayed_event):
+        return delayed_event.delay
 
     def _print(self, *args, **kwargs):
         if self.do_print:

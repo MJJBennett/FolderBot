@@ -8,6 +8,7 @@
 import select
 import time
 import sys
+from enum import Enum
 
 
 def safe_exit(config, code=0):
@@ -66,6 +67,12 @@ def enable_full(api):
     api.enable_full_mode()
 
 
+class RQ(Enum):
+    NORMAL = 1
+    NO_FMT = 2
+    CAP_REQ = 3
+
+
 class API:
     def __init__(self, config):
         self.socket = config.socket
@@ -75,6 +82,7 @@ class API:
         self.timeout = time.time()
         self.full_mode = False
         self.resp_buffer = []
+        self.rq = RQ
 
     def extend_resp_list(self, list_to_extend):
         if len(self.resp_buffer) < 1:
@@ -107,7 +115,6 @@ class API:
             response = get_resp_or_none(self.socket, 0.1)
             send_cap_req(self.socket, message)
             if response is not None:
-                # print("Warning: Discarding response", response)
                 self.resp_buffer.extend(response)
 
     def send_no_fmt(self, message):
@@ -117,16 +124,32 @@ class API:
             response = get_resp_or_none(self.socket, 0.1)
             send_no_fmt(self.socket, message)
             if response is not None:
-                print("Warning: Discarding response", response)
+                self.resp_buffer.extend(response)
 
-    def send(self, message):
+    def send_old(self, message):
         if not self.request_request():
             print('Skipping a request... fix your event loop!\n\tRequest: ' + message)
         else:
             response = get_resp_or_none(self.socket, 0.1)
             send(self.socket, self.channel, message)
             if response is not None:
-                print("Warning: Discarding response", response)
+                self.resp_buffer.extend(response)
+
+    def send(self, message, mode):
+        if not self.request_request():
+            print('Skipping a request... fix your event loop!\n\tRequest: ' + message)
+            return
+
+        response = get_resp_or_none(self.socket, 0.1)
+        if mode is RQ.NORMAL:
+            send(self.socket, self.channel, message)
+        elif mode is RQ.CAP_REQ:
+            send_cap_req(self.socket, message)
+        elif mode is RQ.NO_FMT:
+            send_no_fmt(self.socket, message)
+
+        if response is not None:
+            self.resp_buffer.extend(response)
 
     def resp(self):
         response = get_resp_or_none(self.socket)

@@ -1,9 +1,10 @@
 class Event:
-    def __init__(self, _callable, _api, _manager, after_run=None):
-        self.event = _callable
+    def __init__(self, _event, _api, _manager, after_run=None, delay=0):
+        self.event = _event
         self.api = _api
         self.manager = _manager
         self.after_run = after_run
+        self.delay = delay
 
     def run(self):
         self.event(self.api)
@@ -16,9 +17,9 @@ class SendExactEvent(Event):
 
     def run(self):
         if self.event is None:
-            self.api.send_no_fmt(self.message)
+            self.api.send(self.message, self.api.rq.NO_FMT)
         else:
-            self.api.send_no_fmt(self.event(self.message))
+            self.api.send_no_fmt(self.event(self.message), self.api.rq.NO_FMT)
         if self.after_run is not None:
             self.after_run()
 
@@ -30,9 +31,9 @@ class SendCapReqEvent(Event):
 
     def run(self):
         if self.event is None:
-            self.api.send_cap_req(self.message)
+            self.api.send(self.message, self.api.rq.CAP_REQ)
         else:
-            self.api.send_cap_req(self.event(self.message))
+            self.api.send(self.event(self.message), self.api.rq.CAP_REQ)
         if self.after_run is not None:
             self.after_run()
 
@@ -44,9 +45,9 @@ class SendMessageEvent(Event):
 
     def run(self):
         if self.event is None:
-            self.api.send(self.message)
+            self.api.send(self.message, self.api.rq.NORMAL)
         else:
-            self.api.send(self.event(self.message))
+            self.api.send(self.event(self.message), self.api.rq.NORMAL)
         if self.after_run is not None:
             self.after_run()
 

@@ -97,7 +97,7 @@ def main():
                     elif _command == 'send_exact' or _command == 'say_exact' and _args is not None:
                         _manager.add_event_t(SendExactEvent, message=_args)
                     elif _command == 'enable_full':
-                        _manager.add_event(Event(_callable=ut.enable_full, _api=_api, _manager=_manager))
+                        _manager.add_event(Event(_event=ut.enable_full, _api=_api, _manager=_manager))
                     elif _command == 'flush_log':
                         log("Flushing log.")
                         logging.flush()
