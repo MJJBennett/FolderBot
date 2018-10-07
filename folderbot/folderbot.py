@@ -62,6 +62,7 @@ def main():
                     full_information = re.search(
                         r'^@badges=[\w/0-9,]*;color=[\w/0-9,]*;display-name=(\w*);.*?user-type=[\w/0-9,]* (.*)',
                         response)
+                    log('[FULL RESPONSE]', full_information.strip('\r\n'))
                 except TypeError:
                     full_information = None
                     log("Got erroneous response: ")
