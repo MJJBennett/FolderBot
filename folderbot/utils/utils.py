@@ -102,38 +102,10 @@ class API:
         return True  # You are allowed to make a request
 
     def enable_full_mode(self):
-        self.send_cap_req("twitch.tv/commands")
-        self.send_cap_req("twitch.tv/tags")
-        self.send_cap_req("twitch.tv/membership")
+        self.send("twitch.tv/commands", self.rq.CAP_REQ)
+        self.send("twitch.tv/tags", self.rq.CAP_REQ)
+        self.send("twitch.tv/membership", self.rq.CAP_REQ)
         self.full_mode = True
-
-    def send_cap_req(self, message):
-        # Hopefully we'll just make this a single 'send' function in the future with helpers...
-        if not self.request_request():
-            print('Skipping a request... fix your event loop!\n\tRequest: ' + message)
-        else:
-            response = get_resp_or_none(self.socket, 0.1)
-            send_cap_req(self.socket, message)
-            if response is not None:
-                self.resp_buffer.extend(response)
-
-    def send_no_fmt(self, message):
-        if not self.request_request():
-            print('Skipping a request... fix your event loop!\n\tRequest: ' + message)
-        else:
-            response = get_resp_or_none(self.socket, 0.1)
-            send_no_fmt(self.socket, message)
-            if response is not None:
-                self.resp_buffer.extend(response)
-
-    def send_old(self, message):
-        if not self.request_request():
-            print('Skipping a request... fix your event loop!\n\tRequest: ' + message)
-        else:
-            response = get_resp_or_none(self.socket, 0.1)
-            send(self.socket, self.channel, message)
-            if response is not None:
-                self.resp_buffer.extend(response)
 
     def send(self, message, mode):
         if not self.request_request():
