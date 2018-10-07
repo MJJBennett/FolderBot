@@ -40,12 +40,16 @@ def main():
     else:
         print("Doing printing.")
     log = logging.log
+    log_all = False
 
     # API takes an object with socket and channel members
     _api = ut.API(_config)
     _manager = EventManager(_api)
     # _manager.add_event(EveryLoopEvent(_callable=None, _api=_api, _manager=_manager, runs_till_event=30,
     #                                   extra_event=functools.partial(_api.send, "There have been 10 loops!")))
+
+    can_make_commanders = ['dfolder']  # This could be loaded from a configuration file & saved back to there
+    commanders = ['dfolder']
 
     log('Starting bot. Information:\n\tSocket:', str(_api.socket), '\n\tChannel:', _api.channel)
     while True:
@@ -54,6 +58,7 @@ def main():
         _api.extend_resp_list(full_response)
         while full_response is not None and len(full_response) > 0:
             response = full_response.pop(0)
+            did_something = False
             # We got a response from the server!
             # First, let's clean it up if we're in full mode.
             # This means that the response looks really ugly & includes a bunch of unnecessary information at the start.
@@ -75,20 +80,39 @@ def main():
             if command is not None:
                 _command = command.group(2).strip('\r\n ')
                 _caller = command.group(1)
-                _args = _command.split(' ', 1)
+                _args = None if len(_command.split(' ', 1)) <= 1 else _command.split(' ', 1)[1]
                 _command = _command.split(' ')[0].lower()
-                if len(_args) <= 1:
-                    _args = None
-                else:
-                    _args = _args[1]
-                if _caller in ['dfolder']:
+
+                if _caller in can_make_commanders:
+                    if log_all:
+                        log('[2] Executing command: ' + _command + ' with args: ' + str(_args))
+                    if _command == 'conscript':
+                        commanders.append(_args.lower())
+                        did_something = True
+                    elif _command == 'decommission':
+                        commanders.remove(_args.lower())
+                        did_something = True
+
+                if _caller in commanders:
                     # This should be improved later, but we're going to just check the command here
+                    if log_all:
+                        log('[1] Executing command: ' + _command + ' with args: ' + str(_args))
                     if _command == 'stop':
                         _manager.add_event_t(SendMessageEvent, message="Why don't you love me...",
                                              after_run=functools.partial(ut.safe_exit, _config, 0))
+                    elif _command == 'print_full_debug':
+                        log_all = True
+                        log("Enabled full debugging mode.")
+                    elif _command == 'no_full_debug':
+                        log_all = False
                     elif _command == 'debug':
                         log("Attempting to print debug messages:")
+                        log("Manager debug:")
                         log(_manager.dump_debug())
+                        log("Command arguments:")
+                        log(str(_args))
+                        log("Current commanders:")
+                        log(str(commanders))
                         # _manager.add_event_t(GetNoticesEvent)
                     elif _command == 'say' and _args is not None:
                         _manager.add_event_t(SendMessageEvent, message=_args)
@@ -101,8 +125,12 @@ def main():
                     elif _command == 'flush_log':
                         log("Flushing log.")
                         logging.flush()
-                else:
-                    _api.send("Please stop trying to abuse me, " + _caller + ".")
+                elif not did_something:
+                    # We didn't set moderator privileges and we don't have command use
+                    if log_all:
+                        log('The user ' + _caller + ' attempted to use ' + _command + ' with args: ' + str(_args))
+                    _manager.add_event_t(SendMessageEvent,
+                                         message="Please stop trying to abuse me, " + _caller + ".")
 
         # This is to avoid making Twitch angry
         time.sleep(0.75)
