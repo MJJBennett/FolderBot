@@ -74,6 +74,13 @@ class API:
         self.requests_in_last_thirty_seconds = 0
         self.timeout = time.time()
         self.full_mode = False
+        self.resp_buffer = []
+
+    def extend_resp_list(self, list_to_extend):
+        if len(self.resp_buffer) < 1:
+            return
+        list_to_extend.extend(self.resp_buffer)
+        self.resp_buffer.clear()
 
     def request_request(self):
         # This checks if you can make a request (or if you need to wait)
@@ -100,7 +107,8 @@ class API:
             response = get_resp_or_none(self.socket, 0.1)
             send_cap_req(self.socket, message)
             if response is not None:
-                print("Warning: Discarding response", response)
+                # print("Warning: Discarding response", response)
+                self.resp_buffer.extend(response)
 
     def send_no_fmt(self, message):
         if not self.request_request():

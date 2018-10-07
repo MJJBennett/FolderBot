@@ -51,14 +51,21 @@ def main():
     while True:
         do_events(_api, _manager)
         full_response = _api.resp()
+        _api.extend_resp_list(full_response)
         while full_response is not None and len(full_response) > 0:
             response = full_response.pop(0)
             # We got a response from the server!
             # First, let's clean it up if we're in full mode.
             # This means that the response looks really ugly & includes a bunch of unnecessary information at the start.
             if _api.full_mode:
-                full_information = re.search(
-                    r'^@badges=[\w/0-9,]*;color=[\w/0-9,]*;display-name=(\w*);.*?user-type=[\w/0-9,]* (.*)', response)
+                try:
+                    full_information = re.search(
+                        r'^@badges=[\w/0-9,]*;color=[\w/0-9,]*;display-name=(\w*);.*?user-type=[\w/0-9,]* (.*)',
+                        response)
+                except TypeError:
+                    full_information = None
+                    log("Got erroneous response: ")
+                    log(str(response))
                 if full_information is not None:
                     log('[SENDER]', full_information.group(1))
                     response = full_information.group(2)
